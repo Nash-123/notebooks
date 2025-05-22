@@ -9,7 +9,8 @@ WORKDIR /opt/app-root/bin
 USER 0
 
 # Install useful OS packages
-RUN dnf install -y mesa-libGL skopeo && dnf clean all && rm -rf /var/cache/yum
+RUN dnf install -y mesa-libGL skopeo gcc g++ make openssl-devel autoconf automake libtool cmake && \
+    dnf clean all && rm -rf /var/cache/yum
 
 # Other apps and tools installed as default user
 USER 1001
@@ -38,7 +39,7 @@ LABEL name="odh-notebook-runtime-minimal-ubi9-python-3.11" \
     authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
     io.openshift.build.commit.ref="main" \
     io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/runtimes/minimal/ubi9-python-3.11" \
-    io.openshift.build.image="quay.io/opendatahub/workbench-images:runtime-minimal-ubi9-python-3.11"
+    io.openshift.build.image="quay.io/nishan_acharya123/notebooks:runtime-minimal-ubi9-python-3.11"
 
 WORKDIR /opt/app-root/bin
 
@@ -55,3 +56,4 @@ RUN echo "Installing softwares and packages" && \
     fix-permissions /opt/app-root -P
 
 WORKDIR /opt/app-root/src
+
