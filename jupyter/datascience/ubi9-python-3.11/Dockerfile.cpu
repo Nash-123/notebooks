@@ -77,7 +77,7 @@ LABEL name="odh-notebook-jupyter-datascience-ubi9-python-3.11" \
     authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
     io.openshift.build.commit.ref="main" \
     io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/jupyter/datascience/ubi9-python-3.11" \
-    io.openshift.build.image="quay.io/opendatahub/workbench-images:jupyter-datascience-ubi9-python-3.11"
+    io.openshift.build.image="quay.io/nishan_acharya123/notebooks:jupyter-datascience-ubi9-python-3.11"
 
 WORKDIR /opt/app-root/bin
 
