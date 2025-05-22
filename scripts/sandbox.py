@@ -40,7 +40,7 @@ def main() -> int:
 
     prereqs = buildinputs(dockerfile=args.dockerfile)
 
-    with tempfile.TemporaryDirectory() as tmpdir:
+    with tempfile.TemporaryDirectory(delete=True) as tmpdir:
         setup_sandbox(prereqs, pathlib.Path(tmpdir))
         command = [arg if arg != "{};" else tmpdir for arg in args.remaining[1:]]
         print(f"running {command=}")
