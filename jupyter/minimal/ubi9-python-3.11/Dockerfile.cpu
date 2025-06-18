@@ -61,6 +61,7 @@ RUN echo "Building for architecture: ${TARGETARCH}" && \
             texlive \
             texlive-latex \
             texlive-collection-basic \
+	    texlive-tcolorbox \
             pandoc && \
         dnf clean all && rm -rf /var/cache/dnf /var/cache/yum; \
     fi
