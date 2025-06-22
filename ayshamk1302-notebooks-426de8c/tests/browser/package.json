@@ -1,0 +1,21 @@
+{
+  "type": "module",
+  "private": "true",
+  "name": "notebooks",
+  "version": "1.0.0",
+  "description": "Tests for Open Data Hub / OpenShift AI Notebook / Workbench images in TypeScript.",
+  "main": "index.js",
+  "scripts": {},
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.52.0",
+
+    "testcontainers": "^10.25.0",
+
+    "typescript": "^5.0.5",
+    "@types/node": "^22.15.17"
+  },
+  "packageManager": "pnpm@10.8.0"
+}

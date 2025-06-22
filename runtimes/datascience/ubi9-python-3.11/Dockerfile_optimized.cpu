@@ -1,0 +1,144 @@
+####################
+# base             #
+####################
+FROM registry.access.redhat.com/ubi9/python-311:latest AS base
+
+WORKDIR /opt/app-root/bin
+USER 0
+
+ARG CARGO_HOME=/opt/.cargo/
+
+# Install OS dependencies
+RUN ARCH=$(uname -m) && \
+    echo "Detected architecture: $ARCH" && \
+    if [ "$ARCH" = "s390x" ]; then \
+        dnf install -y --allowerasing curl mesa-libGL skopeo gcc gcc-c++ cmake make unixODBC-devel \
+            openblas-devel openssl-devel python3-devel libffi-devel \
+            autoconf automake libtool gfortran git wget zlib-devel && \
+        dnf clean all && rm -rf /var/cache/yum && \
+        mkdir -p /opt/.cargo && \
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o rustup-init.sh && \
+        chmod +x rustup-init.sh && \
+        CARGO_HOME=/opt/.cargo ./rustup-init.sh -y --no-modify-path && \
+        rm -f rustup-init.sh && \
+        curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v3.20.3/protobuf-all-3.20.3.tar.gz && \
+        tar -xvzf protobuf-all-3.20.3.tar.gz && \
+        cd protobuf-3.20.3 && \
+        ./configure && make -j"$(nproc)" && make install && ldconfig && \
+        cd .. && rm -rf protobuf-3.20.3 protobuf-all-3.20.3.tar.gz; \
+    else \
+        dnf install -y mesa-libGL skopeo && \
+        dnf clean all && rm -rf /var/cache/yum; \
+    fi
+
+ENV PATH="/opt/.cargo/bin:${PATH}"
+ENV CARGO_HOME="/opt/.cargo"
+ENV GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1
+
+# Set Python 3.11 as the system default
+RUN alternatives --install /usr/bin/python python /usr/bin/python3.11 1 && \
+    alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 && \
+    python --version && python3 --version
+
+RUN chown -R 1001:0 /opt/.cargo
+
+USER 1001
+
+# Install micropipenv
+RUN pip install --no-cache-dir -U "micropipenv[toml]"
+
+# Install OpenShift CLI
+RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
+        -o /tmp/openshift-client-linux.tar.gz && \
+    tar -xzvf /tmp/openshift-client-linux.tar.gz oc && \
+    rm -f /tmp/openshift-client-linux.tar.gz
+
+
+##############################
+# wheel-builder stage        #
+##############################
+FROM base AS wheel-builder
+
+USER 0
+WORKDIR /tmp/build-wheels
+
+# Install build dependencies (shared for pyarrow and onnx)
+RUN dnf install -y cmake make gcc-c++ git wget tar pybind11-devel ninja-build zlib-devel && \
+    dnf clean all && rm -rf /var/cache/dnf
+
+# Build and collect pyarrow wheel
+RUN git clone https://github.com/apache/arrow.git && \
+    cd arrow/cpp && \
+    mkdir release && cd release && \
+    cmake -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_INSTALL_PREFIX=/usr/local \
+          -DARROW_PYTHON=ON \
+          -DARROW_PARQUET=ON \
+          -DARROW_ORC=ON \
+          -DARROW_FILESYSTEM=ON \
+          -DARROW_JSON=ON \
+          -DARROW_CSV=ON \
+          -DARROW_DATASET=ON \
+          -DARROW_DEPENDENCY_SOURCE=BUNDLED \
+          -DARROW_WITH_LZ4=OFF \
+          -DARROW_WITH_ZSTD=OFF \
+          -DARROW_WITH_SNAPPY=OFF \
+          .. && \
+    make -j"$(nproc)" && \
+    make install && \
+    cd ../../python && \
+    pip install -r requirements-build.txt && \
+    pip install --no-cache-dir wheel && \
+    export PYARROW_PARALLEL=$(nproc) && \
+    python setup.py build_ext --build-type=release --bundle-arrow-cpp bdist_wheel && \
+    mkdir -p /tmp/wheels && cp dist/pyarrow-*.whl /tmp/wheels && \
+    cd /tmp/build-wheels && rm -rf arrow
+
+# Install Eigen and link pybind11 for ONNX
+RUN mkdir -p /usr/local/share/cmake && \
+    ln -sf $(python -m pybind11 --cmakedir) /usr/local/share/cmake/pybind11 && \
+    ([ -e /usr/bin/cmake3 ] || ln -s /usr/bin/cmake /usr/bin/cmake3 || true) && \
+    wget https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.tar.gz && \
+    tar -xzf eigen-3.4.0.tar.gz && \
+    cd eigen-3.4.0 && mkdir build && cd build && cmake .. && make install && \
+    cd /tmp/build-wheels && rm -rf eigen-3.4.0 eigen-3.4.0.tar.gz
+
+# Build and collect ONNX wheel
+RUN git clone --recursive https://github.com/onnx/onnx.git && \
+    cd onnx && \
+    pip install -r requirements.txt && \
+    pip install -U setuptools wheel cython cmake ninja && \
+    python setup.py build_ext --inplace && \
+    python setup.py bdist_wheel && \
+    mkdir -p /tmp/wheels && cp dist/onnx-*.whl /tmp/wheels && \
+    cd .. && rm -rf onnx
+
+
+USER 1001
+
+
+#######################
+# runtime-datascience #
+#######################
+FROM base AS runtime-datascience
+
+WORKDIR /opt/app-root/bin
+
+USER 0
+
+# Copy wheels from build stage
+COPY --from=wheel-builder /tmp/wheels /tmp/wheels
+
+# Install wheels directly
+RUN pip install /tmp/wheels/*.whl && rm -rf /tmp/wheels
+
+# Install remaining dependencies
+COPY runtimes/datascience/ubi9-python-3.11/Pipfile.lock ./
+COPY runtimes/datascience/ubi9-python-3.11/utils ./utils/
+
+RUN micropipenv install && rm -f Pipfile.lock && \
+    chmod -R g+w /opt/app-root/lib/python3.11/site-packages && \
+    fix-permissions /opt/app-root -P
+
+WORKDIR /opt/app-root/src
+
