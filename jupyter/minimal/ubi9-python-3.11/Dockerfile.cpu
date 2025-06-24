@@ -76,6 +76,7 @@ RUN echo "Building for architecture: ${TARGETARCH}" && \
 	  texlive-grffile \
 	  texlive-listings \
 	  texlive-mdframed \
+	  texlive-ulem \
 	  texlive-upquote \
 	  texlive-xcolor && \
 	dnf clean all && rm -rf /var/cache/dnf /var/cache/yum; \
