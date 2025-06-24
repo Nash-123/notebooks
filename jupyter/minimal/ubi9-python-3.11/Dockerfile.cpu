@@ -54,19 +54,31 @@ RUN echo "Building for architecture: ${TARGETARCH}" && \
     	echo "Installing TeX Live packages for PDF export on s390x..." && \
     	dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && \
         dnf update -y && \
-	dnf install -y \
-          texlive \
-     	  texlive-collection-basic \
-     	  texlive-adjustbox \
-      	  texlive-collection-fontsrecommended \
-      	  texlive-enumitem \
-     	  texlive-pdfcolmk \
-     	  texlive-soul \
-      	  texlive-tcolorbox \
-      	  texlive-titling \
-     	  texlive-ucs \
-      	  pandoc && \
-    	dnf clean all && rm -rf /var/cache/dnf /var/cache/yum; \
+    	dnf install -y \
+	  pandoc \
+ 	  texlive \
+  	  texlive-collection-basic \
+  	  texlive-collection-fontsrecommended \
+ 	  texlive-adjustbox \
+ 	  texlive-enumitem \
+  	  texlive-pdfcolmk \
+	  texlive-soul \
+ 	  texlive-tcolorbox \
+	  texlive-titling \
+          texlive-ucs \
+  	  texlive-amsmath \
+	  texlive-amsfonts \
+	  texlive-caption \
+	  texlive-eurosym \
+	  texlive-fancyvrb \
+	  texlive-framed \
+	  texlive-geometry \
+	  texlive-grffile \
+	  texlive-listings \
+	  texlive-mdframed \
+	  texlive-upquote \
+	  texlive-xcolor && \
+	dnf clean all && rm -rf /var/cache/dnf /var/cache/yum; \
     fi
 
 # Dependencies for PDF export
