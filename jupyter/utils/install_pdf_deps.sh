@@ -4,26 +4,46 @@
 
 set -euxo
 
-# Get the system architecture
-ARCH=$(uname -m)
-
-if [ "$ARCH" = "s390x" ]; then
-    echo "Running on s390x architecture - using system-provided TexLive packages"
-    # TexLive packages are already installed via dnf in the Dockerfile
-    # No need to install from CTAN as it doesn't support s390x
-    # Install pandoc from dnf (already done in Dockerfile)
-    echo "Using system-provided pandoc package"
+# Handle s390x architecture-specific dependencies
+if [ "${TARGETARCH}" = "s390x" ]; then
+    echo "Installing TeX Live and Pandoc packages for PDF export on s390x..."
+    dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+    dnf update -y
+    dnf install -y \
+        pandoc \
+        texlive \
+        texlive-collection-basic \
+        texlive-collection-fontsrecommended \
+        texlive-adjustbox \
+        texlive-enumitem \
+        texlive-pdfcolmk \
+        texlive-soul \
+        texlive-tcolorbox \
+        texlive-titling \
+        texlive-ucs \
+        texlive-amsmath \
+        texlive-amsfonts \
+        texlive-caption \
+        texlive-eurosym \
+        texlive-fancyvrb \
+        texlive-framed \
+        texlive-geometry \
+        texlive-grffile \
+        texlive-listings \
+        texlive-mdframed \
+        texlive-ulem \
+        texlive-upquote \
+        texlive-xcolor && \
+    dnf clean all && rm -rf /var/cache/dnf /var/cache/yum
 else
-    # tex live installation
-    echo "Installing TexLive to allow PDf export from Notebooks" 
-    curl -L https://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz -o install-tl-unx.tar.gz 
+    echo "Installing TexLive to allow PDf export from Notebooks"
+    curl -L https://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz -o install-tl-unx.tar.gz
     zcat < install-tl-unx.tar.gz | tar xf -
     cd install-tl-2*
     perl ./install-tl --no-interaction --scheme=scheme-small --texdir=/usr/local/texlive
     cd /usr/local/texlive/bin/x86_64-linux
     ./tlmgr install tcolorbox pdfcol adjustbox titling enumitem soul ucs collection-fontsrecommended
 
-    # pandoc installation
     curl -L https://github.com/jgm/pandoc/releases/download/3.7.0.2/pandoc-3.7.0.2-linux-amd64.tar.gz  -o /tmp/pandoc.tar.gz
     mkdir -p /usr/local/pandoc
     tar xvzf /tmp/pandoc.tar.gz --strip-components 1 -C /usr/local/pandoc/
