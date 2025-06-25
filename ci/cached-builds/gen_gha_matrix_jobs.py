@@ -23,6 +23,7 @@ project_dir = pathlib.Path(__file__).parent.parent.parent.absolute()
 
 S390X_COMPATIBLE = {
     "runtime-minimal-ubi9-python-3.11",
+    "jupyter-minimal-ubi9-python-3.11",
     # add more here
 }
 
