@@ -7,70 +7,90 @@ set -euxo
 # Handle s390x architecture-specific dependencies
 if [ "${TARGETARCH}" = "s390x" ]; then
     echo "Installing TeX Live and Pandoc packages for PDF export on s390x..."
-    
-    # Enable EPEL repository
+
+    # Enable EPEL repository for pandoc
     dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
-    
-    # Enable CodeReady Builder repository which contains TeX packages
-    dnf install -y dnf-plugins-core
-    
-    # Try multiple ways to enable CRB repository
-    dnf config-manager --set-enabled crb || true
-    dnf config-manager --set-enabled codeready-builder-for-rhel-9 || true
-    
-    # Enable EPEL testing repository as fallback
-    dnf config-manager --set-enabled epel-testing || true
-    
-    # Update package lists
-    dnf clean all
-    dnf update -y
-    
-    # Install basic build tools since Development Tools group might not be available
-    dnf install -y make gcc gcc-c++ kernel-devel || true
-    
-    # First try installing pandoc separately as it's in the main repos
+
+    # Install basic build tools and dependencies
+    dnf install -y make gcc gcc-c++ perl wget which
+
+    # Install pandoc from EPEL
     dnf install -y pandoc || true
-    
-    # Try to install texlive packages from EPEL
-    for i in {1..3}; do
-        if dnf install -y --setopt=tsflags=nodocs \
-            texlive \
-            texlive-collection-basic \
-            texlive-collection-fontsrecommended \
-            texlive-adjustbox \
-            texlive-enumitem \
-            texlive-pdfcolmk \
-            texlive-soul \
-            texlive-tcolorbox \
-            texlive-titling \
-            texlive-ucs \
-            texlive-amsmath \
-            texlive-amsfonts \
-            texlive-caption \
-            texlive-eurosym \
-            texlive-fancyvrb \
-            texlive-framed \
-            texlive-geometry \
-            texlive-grffile \
-            texlive-listings \
-            texlive-mdframed \
-            texlive-ulem \
-            texlive-upquote \
-            texlive-xcolor; then
-            break
-        fi
-        echo "Attempt $i failed. Retrying..."
-        # Try enabling additional repos if packages aren't found
-        dnf config-manager --set-enabled epel-testing || true
-        dnf config-manager --set-enabled crb || true
-        dnf config-manager --set-enabled codeready-builder-for-rhel-9 || true
-        dnf clean all
-        dnf repolist
-        sleep 5
-    done
+
+    # Install TexLive directly using installer
+    echo "Installing TexLive using direct installer..."
+    TEXLIVE_MIRROR="https://mirror.ctan.org/systems/texlive/tlnet"
+
+    # Create temporary directory for installation
+    TEMP_DIR=$(mktemp -d)
+    cd $TEMP_DIR
+
+    # Download and extract installer
+    curl -L ${TEXLIVE_MIRROR}/install-tl-unx.tar.gz -o install-tl-unx.tar.gz
+    tar xzf install-tl-unx.tar.gz
+    cd install-tl-*
+
+    # Create a minimal profile for TexLive installation
+    cat > texlive.profile << EOF
+selected_scheme scheme-small
+TEXDIR /usr/local/texlive
+TEXMFCONFIG ~/.texlive/texmf-config
+TEXMFHOME ~/texmf
+TEXMFLOCAL /usr/local/texlive/texmf-local
+TEXMFSYSCONFIG /usr/local/texlive/texmf-config
+TEXMFSYSVAR /usr/local/texlive/texmf-var
+TEXMFVAR ~/.texlive/texmf-var
+binary_s390x-linux 1
+instopt_adjustpath 1
+instopt_adjustrepo 1
+instopt_letter 0
+instopt_portable 0
+instopt_write18_restricted 1
+tlpdbopt_autobackup 0
+tlpdbopt_create_formats 1
+tlpdbopt_generate_updmap 0
+tlpdbopt_install_docfiles 0
+tlpdbopt_install_srcfiles 0
+EOF
+
+    # Run installer with profile
+    ./install-tl --profile=texlive.profile
+
+    # Add TeX Live binaries to PATH
+    export PATH="/usr/local/texlive/bin/s390x-linux:$PATH"
+
+    # Install required packages using tlmgr
+    tlmgr install \
+        collection-basic \
+        collection-fontsrecommended \
+        adjustbox \
+        enumitem \
+        pdfcolmk \
+        soul \
+        tcolorbox \
+        titling \
+        ucs \
+        amsmath \
+        amsfonts \
+        caption \
+        eurosym \
+        fancyvrb \
+        framed \
+        geometry \
+        grffile \
+        listings \
+        mdframed \
+        ulem \
+        upquote \
+        xcolor
 
     # Clean up
-    dnf clean all && rm -rf /var/cache/dnf /var/cache/yum
+    cd /
+    rm -rf $TEMP_DIR
+
+    # Create symlinks for binaries
+    ln -sf /usr/local/texlive/bin/s390x-linux/pdflatex /usr/local/bin/pdflatex
+    ln -sf /usr/local/texlive/bin/s390x-linux/xelatex /usr/local/bin/xelatex
 
     # Verify installations
     which pdflatex || echo "pdflatex not found"
