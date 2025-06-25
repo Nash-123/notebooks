@@ -111,3 +111,4 @@ else
     tar xvzf /tmp/pandoc.tar.gz --strip-components 1 -C /usr/local/pandoc/
     rm -f /tmp/pandoc.tar.gz
 fi
+
