@@ -8,33 +8,41 @@ set -euxo
 if [ "${TARGETARCH}" = "s390x" ]; then
     echo "Installing TeX Live and Pandoc packages for PDF export on s390x..."
 
-    # First try UBI repositories
-    dnf install -y pandoc texlive texlive-collection-basic texlive-collection-fontsrecommended || true
+    # Configure CentOS Stream repositories
+    dnf install -y 'dnf-command(config-manager)'
+    dnf config-manager --add-repo=https://mirror.stream.centos.org/9-stream/BaseOS/s390x/os/
+    dnf config-manager --add-repo=https://mirror.stream.centos.org/9-stream/AppStream/s390x/os/
+    dnf config-manager --add-repo=https://mirror.stream.centos.org/9-stream/CRB/s390x/os/
 
-    # For packages not available in UBI, install from CentOS Stream
-    # Note: This is a temporary solution until these packages are available in UBI
-    # See: https://issues.redhat.com/browse/RHEL-100189 for similar request
-    rpm -ivh --nodeps \
-        https://mirror.stream.centos.org/9-stream/AppStream/s390x/os/Packages/texlive-adjustbox-*.rpm \
-        https://mirror.stream.centos.org/9-stream/AppStream/s390x/os/Packages/texlive-enumitem-*.rpm \
-        https://mirror.stream.centos.org/9-stream/AppStream/s390x/os/Packages/texlive-pdfcolmk-*.rpm \
-        https://mirror.stream.centos.org/9-stream/AppStream/s390x/os/Packages/texlive-soul-*.rpm \
-        https://mirror.stream.centos.org/9-stream/AppStream/s390x/os/Packages/texlive-tcolorbox-*.rpm \
-        https://mirror.stream.centos.org/9-stream/AppStream/s390x/os/Packages/texlive-titling-*.rpm \
-        https://mirror.stream.centos.org/9-stream/AppStream/s390x/os/Packages/texlive-ucs-*.rpm \
-        https://mirror.stream.centos.org/9-stream/AppStream/s390x/os/Packages/texlive-amsmath-*.rpm \
-        https://mirror.stream.centos.org/9-stream/AppStream/s390x/os/Packages/texlive-amsfonts-*.rpm \
-        https://mirror.stream.centos.org/9-stream/AppStream/s390x/os/Packages/texlive-caption-*.rpm \
-        https://mirror.stream.centos.org/9-stream/AppStream/s390x/os/Packages/texlive-eurosym-*.rpm \
-        https://mirror.stream.centos.org/9-stream/AppStream/s390x/os/Packages/texlive-fancyvrb-*.rpm \
-        https://mirror.stream.centos.org/9-stream/AppStream/s390x/os/Packages/texlive-framed-*.rpm \
-        https://mirror.stream.centos.org/9-stream/AppStream/s390x/os/Packages/texlive-geometry-*.rpm \
-        https://mirror.stream.centos.org/9-stream/AppStream/s390x/os/Packages/texlive-grffile-*.rpm \
-        https://mirror.stream.centos.org/9-stream/AppStream/s390x/os/Packages/texlive-listings-*.rpm \
-        https://mirror.stream.centos.org/9-stream/AppStream/s390x/os/Packages/texlive-mdframed-*.rpm \
-        https://mirror.stream.centos.org/9-stream/AppStream/s390x/os/Packages/texlive-ulem-*.rpm \
-        https://mirror.stream.centos.org/9-stream/AppStream/s390x/os/Packages/texlive-upquote-*.rpm \
-        https://mirror.stream.centos.org/9-stream/AppStream/s390x/os/Packages/texlive-xcolor-*.rpm
+    # Update repo metadata
+    dnf clean all && dnf makecache
+
+    # Install texlive and pandoc packages from CentOS Stream
+    dnf install -y --nogpgcheck \
+        pandoc \
+        texlive \
+        texlive-collection-basic \
+        texlive-collection-fontsrecommended \
+        texlive-adjustbox \
+        texlive-enumitem \
+        texlive-pdfcolmk \
+        texlive-soul \
+        texlive-tcolorbox \
+        texlive-titling \
+        texlive-ucs \
+        texlive-amsmath \
+        texlive-amsfonts \
+        texlive-caption \
+        texlive-eurosym \
+        texlive-fancyvrb \
+        texlive-framed \
+        texlive-geometry \
+        texlive-grffile \
+        texlive-listings \
+        texlive-mdframed \
+        texlive-ulem \
+        texlive-upquote \
+        texlive-xcolor
 
     dnf clean all && rm -rf /var/cache/dnf /var/cache/yum
 else
