@@ -16,34 +16,12 @@ if [ "${TARGETARCH}" = "s390x" ]; then
     # Update repo metadata
     dnf clean all && dnf makecache
 
-    # Install texlive packages from CentOS Stream
-    dnf install -y --nogpgcheck \
-        texlive-9:20200406-26.el9_2 \
-        texlive-base-9:20200406-26.el9_2 \
-        texlive-collection-basic-9:20200406-26.el9_2 \
-        texlive-collection-fontsrecommended-9:20200406-26.el9_2 \
-        texlive-adjustbox-9:20200406-26.el9_2 \
-        texlive-enumitem-9:20200406-26.el9_2 \
-        texlive-pdfcolmk-9:20200406-26.el9_2 \
-        texlive-soul-9:20200406-26.el9_2 \
-        texlive-tcolorbox-9:20200406-36.el9 \
-        texlive-titling-9:20200406-26.el9_2 \
-        texlive-ucs-9:20200406-26.el9_2 \
-        texlive-amsmath-9:20200406-26.el9_2 \
-        texlive-amsfonts-9:20200406-26.el9_2 \
-        texlive-caption-9:20200406-26.el9_2 \
-        texlive-eurosym-9:20200406-26.el9_2 \
-        texlive-fancyvrb-9:20200406-26.el9_2 \
-        texlive-framed-9:20200406-26.el9_2 \
-        texlive-geometry-9:20200406-26.el9_2 \
-        texlive-grffile-9:20200406-26.el9_2 \
-        texlive-listings-9:20200406-26.el9_2 \
-        texlive-mdframed-9:20200406-36.el9 \
-        texlive-ulem-9:20200406-26.el9_2 \
-        texlive-upquote-9:20200406-26.el9_2 \
-        texlive-xcolor-9:20200406-26.el9_2
+    # List available texlive and pandoc packages
+    echo "Available texlive packages:"
+    dnf list available texlive\*
+    echo "Available pandoc packages:"
+    dnf list available pandoc\*
 
-    dnf clean all && rm -rf /var/cache/dnf /var/cache/yum
 else
     # tex live installation
     echo "Installing TexLive to allow PDf export from Notebooks"
