@@ -12,37 +12,36 @@ if [ "${TARGETARCH}" = "s390x" ]; then
     dnf install -y 'dnf-command(config-manager)'
     dnf config-manager --add-repo=https://mirror.stream.centos.org/9-stream/BaseOS/s390x/os/
     dnf config-manager --add-repo=https://mirror.stream.centos.org/9-stream/AppStream/s390x/os/
-    dnf config-manager --add-repo=https://mirror.stream.centos.org/9-stream/CRB/s390x/os/
 
     # Update repo metadata
     dnf clean all && dnf makecache
 
-    # Install texlive and pandoc packages from CentOS Stream
+    # Install texlive packages from CentOS Stream
     dnf install -y --nogpgcheck \
-        pandoc \
-        texlive \
-        texlive-collection-basic \
-        texlive-collection-fontsrecommended \
-        texlive-adjustbox \
-        texlive-enumitem \
-        texlive-pdfcolmk \
-        texlive-soul \
-        texlive-tcolorbox \
-        texlive-titling \
-        texlive-ucs \
-        texlive-amsmath \
-        texlive-amsfonts \
-        texlive-caption \
-        texlive-eurosym \
-        texlive-fancyvrb \
-        texlive-framed \
-        texlive-geometry \
-        texlive-grffile \
-        texlive-listings \
-        texlive-mdframed \
-        texlive-ulem \
-        texlive-upquote \
-        texlive-xcolor
+        texlive-9:20200406-26.el9_2 \
+        texlive-base-9:20200406-26.el9_2 \
+        texlive-collection-basic-9:20200406-26.el9_2 \
+        texlive-collection-fontsrecommended-9:20200406-26.el9_2 \
+        texlive-adjustbox-9:20200406-26.el9_2 \
+        texlive-enumitem-9:20200406-26.el9_2 \
+        texlive-pdfcolmk-9:20200406-26.el9_2 \
+        texlive-soul-9:20200406-26.el9_2 \
+        texlive-tcolorbox-9:20200406-36.el9 \
+        texlive-titling-9:20200406-26.el9_2 \
+        texlive-ucs-9:20200406-26.el9_2 \
+        texlive-amsmath-9:20200406-26.el9_2 \
+        texlive-amsfonts-9:20200406-26.el9_2 \
+        texlive-caption-9:20200406-26.el9_2 \
+        texlive-eurosym-9:20200406-26.el9_2 \
+        texlive-fancyvrb-9:20200406-26.el9_2 \
+        texlive-framed-9:20200406-26.el9_2 \
+        texlive-geometry-9:20200406-26.el9_2 \
+        texlive-grffile-9:20200406-26.el9_2 \
+        texlive-listings-9:20200406-26.el9_2 \
+        texlive-mdframed-9:20200406-36.el9 \
+        texlive-ulem-9:20200406-26.el9_2 \
+        texlive-upquote-9:20200406-26.el9_2 \
+        texlive-xcolor-9:20200406-26.el9_2
 
     dnf clean all && rm -rf /var/cache/dnf /var/cache/yum
 else
