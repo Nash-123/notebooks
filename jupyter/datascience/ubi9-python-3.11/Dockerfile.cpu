@@ -43,6 +43,7 @@ FROM base AS jupyter-minimal
 
 ARG JUPYTER_REUSABLE_UTILS=jupyter/utils
 ARG MINIMAL_SOURCE_CODE=jupyter/minimal/ubi9-python-3.11
+ARG TARGETARCH
 
 WORKDIR /opt/app-root/bin
 
@@ -68,6 +69,7 @@ ENTRYPOINT ["start-notebook.sh"]
 FROM jupyter-minimal AS jupyter-datascience
 
 ARG DATASCIENCE_SOURCE_CODE=jupyter/datascience/ubi9-python-3.11
+ARG TARGETARCH
 
 LABEL name="odh-notebook-jupyter-datascience-ubi9-python-3.11" \
     summary="Jupyter data science notebook image for ODH notebooks" \
@@ -77,7 +79,7 @@ LABEL name="odh-notebook-jupyter-datascience-ubi9-python-3.11" \
     authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
     io.openshift.build.commit.ref="main" \
     io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/jupyter/datascience/ubi9-python-3.11" \
-    io.openshift.build.image="quay.io/opendatahub/workbench-images:jupyter-datascience-ubi9-python-3.11"
+    io.openshift.build.image="quay.io/nishan_acharya123/notebooks:jupyter-datascience-ubi9-python-3.11"
 
 WORKDIR /opt/app-root/bin
 
@@ -93,7 +95,14 @@ COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/
 # Install MSSQL Client, We need a special repo for MSSQL as they do their own distribution
 COPY ${DATASCIENCE_SOURCE_CODE}/mssql-2022.repo-x86_64 /etc/yum.repos.d/mssql-2022.repo
 
-RUN ACCEPT_EULA=Y dnf install -y mssql-tools18 unixODBC-devel && dnf clean all && rm -rf /var/cache/yum
+# Conditionally install MSSQL tools only for non-s390x
+RUN if [ "$TARGETARCH" != "s390x" ]; then \
+      echo "Installing MSSQL tools for $TARGETARCH" && \
+      ACCEPT_EULA=Y dnf install -y mssql-tools18 unixODBC-devel && \
+      dnf clean all && rm -rf /var/cache/yum; \
+    else \
+      echo "Skipping MSSQL tools install on s390x"; \
+    fi
 
 ENV PATH="$PATH:/opt/mssql-tools18/bin"
 
