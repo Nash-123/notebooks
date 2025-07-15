@@ -22,7 +22,8 @@ Use https://pypi.org/project/py-make/ or https://github.com/JetBrains/intellij-p
 project_dir = pathlib.Path(__file__).parent.parent.parent.absolute()
 
 S390X_COMPATIBLE = {
-    "runtime-minimal-ubi9-python-3.11",
+    "runtime-datascience-ubi9-python-3.11",
+    "runtime-datascience-ubi9-python-3.12"
     # add more here
 }
 

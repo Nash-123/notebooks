@@ -18,7 +18,7 @@ $(error This Make does not support .RECIPEPREFIX. Please use GNU Make 4.0 or lat
 endif
 .RECIPEPREFIX =
 
-IMAGE_REGISTRY   ?= quay.io/opendatahub/workbench-images
+IMAGE_REGISTRY   ?= quay.io/megha_gaur/workbench-images
 RELEASE	 		 ?= 2025a
 RELEASE_PYTHON_VERSION	 ?= 3.11
 # additional user-specified caching parameters for $(CONTAINER_ENGINE) build
@@ -46,7 +46,7 @@ KUBECTL_BIN      ?= bin/kubectl
 KUBECTL_VERSION  ?= v1.23.11
 YQ_BIN      ?= bin/yq
 YQ_VERSION  ?= v4.44.6
-NOTEBOOK_REPO_BRANCH_BASE ?= https://raw.githubusercontent.com/opendatahub-io/notebooks/main
+NOTEBOOK_REPO_BRANCH_BASE ?= https://raw.githubusercontent.com/Meghagaur/notebooks/main
 REQUIRED_RUNTIME_IMAGE_COMMANDS="curl python3"
 REQUIRED_CODE_SERVER_IMAGE_COMMANDS="curl python oc code-server"
 REQUIRED_R_STUDIO_IMAGE_COMMANDS="curl python oc /usr/lib/rstudio-server/bin/rserver"
