@@ -8,8 +8,37 @@ WORKDIR /opt/app-root/bin
 # OS Packages needs to be installed as root
 USER 0
 
-# Install useful OS packages
-RUN dnf install -y mesa-libGL skopeo && dnf clean all && rm -rf /var/cache/yum
+ARG TARGETARCH
+RUN echo "Building for architecture: ${TARGETARCH}" && \
+    PACKAGES="mesa-libGL skopeo" && \
+    # Additional dev tools only for s390x
+    if [ "$TARGETARCH" = "s390x" ]; then \
+        PACKAGES="$PACKAGES gcc gcc-c++ make openssl-devel autoconf automake libtool cmake python3-devel pybind11-devel openblas-devel unixODBC-devel"; \
+    fi && \
+    dnf install -y --nogpgcheck --allowerasing --nobest $PACKAGES && \
+    # Rust install and ENV for s390x
+    if [ "$TARGETARCH" = "s390x" ]; then \
+        mkdir -p /opt/.cargo && \
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o rustup-init.sh && \
+        chmod +x rustup-init.sh && \
+        CARGO_HOME=/opt/.cargo ./rustup-init.sh -y --no-modify-path && \
+        rm -f rustup-init.sh && \
+        chown -R 1001:0 /opt/.cargo; \
+    fi && \
+    dnf clean all && rm -rf /var/cache/dnf /var/cache/yum
+
+# Rust env + OpenSSL env only for s390x
+ARG TARGETARCH
+ENV GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=$([ "$TARGETARCH" = "s390x" ] && echo "1" || echo "")
+ENV PATH=$([ "$TARGETARCH" = "s390x" ] && echo "/opt/.cargo/bin:${PATH}" || echo "${PATH}")
+ENV CARGO_HOME=$([ "$TARGETARCH" = "s390x" ] && echo "/opt/.cargo" || echo "")
+
+# Set python alternatives only for s390x (not needed for other arches)
+RUN if [ "$TARGETARCH" = "s390x" ]; then \
+    alternatives --install /usr/bin/python python /usr/bin/python3.11 1 && \
+    alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 && \
+    python --version && python3 --version; \
+fi
 
 # Other apps and tools installed as default user
 USER 1001
@@ -23,11 +52,78 @@ RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/oc
     tar -xzvf /tmp/openshift-client-linux.tar.gz oc && \
     rm -f /tmp/openshift-client-linux.tar.gz
 
+##############################
+# wheel-builder stage        #
+##############################
+FROM base AS wheel-builder
+
+ARG TARGETARCH
+# Only run wheel build logic for s390x
+RUN if [ "$TARGETARCH" != "s390x" ]; then echo "Skipping wheel-builder stage for $TARGETARCH"; exit 0; fi
+
+USER 0
+WORKDIR /tmp/build-wheels
+
+# Install build dependencies (shared for pyarrow and onnx)
+RUN dnf install -y cmake make gcc-c++ pybind11-devel wget && \
+    dnf clean all && rm -rf /var/cache/dnf
+
+# Build and collect pyarrow wheel
+RUN git clone https://github.com/apache/arrow.git && \
+    cd arrow/cpp && \
+    mkdir release && cd release && \
+    cmake -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_INSTALL_PREFIX=/usr/local \
+          -DARROW_PYTHON=ON \
+          -DARROW_PARQUET=ON \
+          -DARROW_ORC=ON \
+          -DARROW_FILESYSTEM=ON \
+          -DARROW_JSON=ON \
+          -DARROW_CSV=ON \
+          -DARROW_DATASET=ON \
+          -DARROW_DEPENDENCY_SOURCE=BUNDLED \
+          -DARROW_WITH_LZ4=OFF \
+          -DARROW_WITH_ZSTD=OFF \
+          -DARROW_WITH_SNAPPY=OFF \
+          .. && \
+    make -j"$(nproc)" && \
+    make install && \
+    cd ../../python && \
+    pip install -r requirements-build.txt && \
+    pip install --no-cache-dir wheel && \
+    export PYARROW_PARALLEL=$(nproc) && \
+    python setup.py build_ext --build-type=release --bundle-arrow-cpp bdist_wheel && \
+    mkdir -p /tmp/wheels && cp dist/pyarrow-*.whl /tmp/wheels && \
+    cd /tmp/build-wheels && rm -rf arrow
+
+# Install Eigen and link pybind11 for ONNX
+RUN mkdir -p /usr/local/share/cmake && \
+    ln -sf $(python -m pybind11 --cmakedir) /usr/local/share/cmake/pybind11 && \
+    ([ -e /usr/bin/cmake3 ] || ln -s /usr/bin/cmake /usr/bin/cmake3 || true) && \
+    wget https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.tar.gz && \
+    tar -xzf eigen-3.4.0.tar.gz && \
+    cd eigen-3.4.0 && mkdir build && cd build && cmake .. && make install && \
+    cd /tmp/build-wheels && rm -rf eigen-3.4.0 eigen-3.4.0.tar.gz
+
+# Build and collect ONNX wheel
+# Build and collect ONNX wheel with shared libs to avoid TLS block issue
+RUN git clone --recursive https://github.com/onnx/onnx.git && \
+    cd onnx && \
+    pip install -r requirements.txt && \
+    pip install -U setuptools wheel cython cmake ninja && \
+    export CMAKE_ARGS="-DBUILD_SHARED_LIBS=ON" && \
+    export ONNX_ML=1 && \
+    python setup.py build_ext --inplace && \
+    python setup.py bdist_wheel && \
+    mkdir -p /tmp/wheels && cp dist/onnx-*.whl /tmp/wheels && \
+    cd .. && rm -rf onnx
+
 #######################
 # runtime-datascience #
 #######################
 FROM base AS runtime-datascience  
 
+ARG TARGETARCH
 ARG DATASCIENCE_SOURCE_CODE=runtimes/datascience/ubi9-python-3.11
 
 LABEL name="odh-notebook-runtime-datascience-ubi9-python-3.11" \
@@ -35,12 +131,18 @@ LABEL name="odh-notebook-runtime-datascience-ubi9-python-3.11" \
     description="Runtime data science notebook image with base Python 3.11 builder image based on UBI9 for ODH notebooks" \
     io.k8s.display-name="Runtime data science notebook image for ODH notebooks" \
     io.k8s.description="Runtime data science notebook image with base Python 3.11 builder image based on UBI9 for ODH notebooks" \
-    authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
+    authoritative-source-url="https://github.com/Nash-123/notebooks" \
     io.openshift.build.commit.ref="main" \
-    io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/runtimes/datascience/ubi9-python-3.11" \
-    io.openshift.build.image="quay.io/opendatahub/workbench-images:runtime-datascience-ubi9-python-3.11"
+    io.openshift.build.source-location="https://github.com/Nash-123/notebooks/tree/main/runtimes/datascience/ubi9-python-3.11" \
+    io.openshift.build.image="quay.io/nishan_acharya123/notebooks:runtime-datascience-ubi9-python-3.11"
 
 WORKDIR /opt/app-root/bin
+
+USER 0
+
+# Copy wheels from build stage (s390x only)
+COPY --from=wheel-builder /tmp/wheels /tmp/wheels
+RUN if [ "$TARGETARCH" = "s390x" ]; then pip install /tmp/wheels/*.whl && rm -rf /tmp/wheels; fi
 
 # Install Python packages from Pipfile.lock
 COPY ${DATASCIENCE_SOURCE_CODE}/Pipfile.lock ./
