@@ -27,11 +27,13 @@ RUN echo "Building for architecture: ${TARGETARCH}" && \
     fi && \
     dnf clean all && rm -rf /var/cache/dnf /var/cache/yum
 
-# Rust env + OpenSSL env only for s390x
-ARG TARGETARCH
-ENV GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=$([ "$TARGETARCH" = "s390x" ] && echo "1" || echo "")
-ENV PATH=$([ "$TARGETARCH" = "s390x" ] && echo "/opt/.cargo/bin:${PATH}" || echo "${PATH}")
-ENV CARGO_HOME=$([ "$TARGETARCH" = "s390x" ] && echo "/opt/.cargo" || echo "")
+# For s390x only, set ENV vars
+RUN if [ "$TARGETARCH" = "s390x" ]; then \
+    echo 'export PATH=/opt/.cargo/bin:$PATH' >> /etc/profile.d/cargo.sh && \
+    echo 'export CARGO_HOME=/opt/.cargo' >> /etc/profile.d/cargo.sh && \
+    echo 'export GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1' >> /etc/profile.d/cargo.sh; \
+fi
+
 
 # Set python alternatives only for s390x (not needed for other arches)
 RUN if [ "$TARGETARCH" = "s390x" ]; then \
