@@ -99,26 +99,26 @@ RUN git clone https://github.com/apache/arrow.git && \
     cd /tmp/build-wheels && rm -rf arrow
 
 # Install Eigen and link pybind11 for ONNX
-RUN mkdir -p /usr/local/share/cmake && \
-    ln -sf $(python -m pybind11 --cmakedir) /usr/local/share/cmake/pybind11 && \
-    ([ -e /usr/bin/cmake3 ] || ln -s /usr/bin/cmake /usr/bin/cmake3 || true) && \
-    wget https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.tar.gz && \
-    tar -xzf eigen-3.4.0.tar.gz && \
-    cd eigen-3.4.0 && mkdir build && cd build && cmake .. && make install && \
-    cd /tmp/build-wheels && rm -rf eigen-3.4.0 eigen-3.4.0.tar.gz
+#RUN mkdir -p /usr/local/share/cmake && \
+#    ln -sf $(python -m pybind11 --cmakedir) /usr/local/share/cmake/pybind11 && \
+#    ([ -e /usr/bin/cmake3 ] || ln -s /usr/bin/cmake /usr/bin/cmake3 || true) && \
+#    wget https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.tar.gz && \
+#    tar -xzf eigen-3.4.0.tar.gz && \
+#    cd eigen-3.4.0 && mkdir build && cd build && cmake .. && make install && \
+#    cd /tmp/build-wheels && rm -rf eigen-3.4.0 eigen-3.4.0.tar.gz
 
 # Build and collect ONNX wheel
 # Build and collect ONNX wheel with shared libs to avoid TLS block issue
-RUN git clone --recursive https://github.com/onnx/onnx.git && \
-    cd onnx && \
-    pip install -r requirements.txt && \
-    pip install -U setuptools wheel cython cmake ninja && \
-    export CMAKE_ARGS="-DBUILD_SHARED_LIBS=ON" && \
-    export ONNX_ML=1 && \
-    python setup.py build_ext --inplace && \
-    python setup.py bdist_wheel && \
-    mkdir -p /tmp/wheels && cp dist/onnx-*.whl /tmp/wheels && \
-    cd .. && rm -rf onnx
+#RUN git clone --recursive https://github.com/onnx/onnx.git && \
+#    cd onnx && \
+#    pip install -r requirements.txt && \
+#    pip install -U setuptools wheel cython cmake ninja && \
+#    export CMAKE_ARGS="-DBUILD_SHARED_LIBS=ON" && \
+#    export ONNX_ML=1 && \
+#    python setup.py build_ext --inplace && \
+#    python setup.py bdist_wheel && \
+#    mkdir -p /tmp/wheels && cp dist/onnx-*.whl /tmp/wheels && \
+#    cd .. && rm -rf onnx
 
 #######################
 # runtime-datascience #
@@ -142,9 +142,15 @@ WORKDIR /opt/app-root/bin
 
 USER 0
 
-# Copy wheels from build stage (s390x only)
-COPY --from=wheel-builder /tmp/wheels /tmp/wheels
-RUN if [ "$TARGETARCH" = "s390x" ]; then pip install /tmp/wheels/*.whl && rm -rf /tmp/wheels; fi
+# Install s390x-built wheels only on s390x
+RUN if [ "$TARGETARCH" = "s390x" ]; then \
+        echo "Installing wheels for s390x..." && \
+        cp -r /tmp/wheels /tmp/wheels && \
+        pip install /tmp/wheels/*.whl && \
+        rm -rf /tmp/wheels; \
+    else \
+        echo "Skipping wheel install for $TARGETARCH"; \
+    fi
 
 # Install Python packages from Pipfile.lock
 COPY ${DATASCIENCE_SOURCE_CODE}/Pipfile.lock ./
