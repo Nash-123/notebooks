@@ -102,27 +102,6 @@ RUN git clone https://github.com/apache/arrow.git && \
     mkdir -p /tmp/wheels && cp dist/pyarrow-*.whl /tmp/wheels && \
     cd /tmp/build-wheels && rm -rf arrow
 
-# Install Eigen and link pybind11 for ONNX
-RUN mkdir -p /usr/local/share/cmake && \
-    ln -sf $(python -m pybind11 --cmakedir) /usr/local/share/cmake/pybind11 && \
-    ([ -e /usr/bin/cmake3 ] || ln -s /usr/bin/cmake /usr/bin/cmake3 || true) && \
-    wget https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.tar.gz && \
-    tar -xzf eigen-3.4.0.tar.gz && \
-    cd eigen-3.4.0 && mkdir build && cd build && cmake .. && make install && \
-    cd /tmp/build-wheels && rm -rf eigen-3.4.0 eigen-3.4.0.tar.gz
-
-# Build and collect ONNX wheel with shared libs to avoid TLS block issue
-RUN git clone --recursive https://github.com/onnx/onnx.git && \
-    cd onnx && \
-    pip install -r requirements.txt && \
-    pip install -U setuptools wheel cython cmake ninja && \
-    export CMAKE_ARGS="-DBUILD_SHARED_LIBS=ON" && \
-    export ONNX_ML=1 && \
-    python setup.py build_ext --inplace && \
-    python setup.py bdist_wheel && \
-    mkdir -p /tmp/wheels && cp dist/onnx-*.whl /tmp/wheels && \
-    cd .. && rm -rf onnx
-
 #######################
 # runtime-datascience #
 #######################
@@ -144,7 +123,7 @@ LABEL name="odh-notebook-runtime-datascience-ubi9-python-3.12" \
 WORKDIR /opt/app-root/bin
 
 USER 0
-
+ARG TARGETARCH
 # Copy wheels from build stage (s390x only)
 COPY --from=wheel-builder /tmp/wheels /tmp/wheels
 RUN if [ "$TARGETARCH" = "s390x" ]; then pip install /tmp/wheels/*.whl && rm -rf /tmp/wheels; fi
