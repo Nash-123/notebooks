@@ -60,8 +60,7 @@ RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/oc
 FROM base AS wheel-builder
 
 ARG TARGETARCH
-# Only run wheel build logic for s390x
-RUN if [ "$TARGETARCH" != "s390x" ]; then echo "Skipping wheel-builder stage for $TARGETARCH"; exit 0; fi
+RUN test "$TARGETARCH" = "s390x" || (echo "Skipping wheel-builder"; exit 0)
 
 USER 0
 WORKDIR /tmp/build-wheels
@@ -119,10 +118,13 @@ LABEL name="odh-notebook-runtime-datascience-ubi9-python-3.11" \
 WORKDIR /opt/app-root/bin
 
 USER 0
-ARG TARGETARCH
 # Copy wheels from build stage (s390x only)
 COPY --from=wheel-builder /tmp/wheels /tmp/wheels
-RUN if [ "$TARGETARCH" = "s390x" ]; then pip install /tmp/wheels/*.whl && rm -rf /tmp/wheels; fi
+RUN if [ "$TARGETARCH" = "s390x" ]; then \
+    pip install /tmp/wheels/*.whl && rm -rf /tmp/wheels; \
+else \
+    echo "Skipping wheel install for $TARGETARCH"; \
+fi
 
 # Install Python packages from Pipfile.lock
 COPY ${DATASCIENCE_SOURCE_CODE}/Pipfile.lock ./

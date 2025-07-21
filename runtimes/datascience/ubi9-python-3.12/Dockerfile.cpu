@@ -65,7 +65,7 @@ FROM base AS wheel-builder
 ARG TARGETARCH
 
 # Skip build for non-s390x — keep harmless since it's not used later
-RUN if [ "$TARGETARCH" != "s390x" ]; then echo "Skipping wheel-builder stage for $TARGETARCH"; exit 0; fi
+RUN test "$TARGETARCH" = "s390x" || (echo "Skipping wheel-builder"; exit 0)
 
 USER 0
 WORKDIR /tmp/build-wheels
@@ -126,7 +126,11 @@ USER 0
 ARG TARGETARCH
 # Copy wheels from build stage (s390x only)
 COPY --from=wheel-builder /tmp/wheels /tmp/wheels
-RUN if [ "$TARGETARCH" = "s390x" ]; then pip install /tmp/wheels/*.whl && rm -rf /tmp/wheels; fi
+RUN if [ "$TARGETARCH" = "s390x" ]; then \
+    pip install /tmp/wheels/*.whl && rm -rf /tmp/wheels; \
+else \
+    echo "Skipping wheel install for $TARGETARCH"; \
+fi
 
 # Install Python packages from Pipfile.lock
 COPY ${DATASCIENCE_SOURCE_CODE}/Pipfile.lock ./
