@@ -10,17 +10,29 @@ USER 0
 
 ARG TARGETARCH
 # Install packages with architecture-specific handling
+#RUN --mount=type=cache,target=/var/cache/dnf \
+#    echo "Building for architecture: ${TARGETARCH}" && \
+#    PACKAGES="mesa-libGL skopeo" && \
+#    # Additional dev tools only for s390x
+#    if [ "$TARGETARCH" = "s390x" ]; then \
+#        PACKAGES="$PACKAGES gcc gcc-c++ make openssl-devel autoconf automake libtool cmake python3-devel pybind11-devel openblas-devel unixODBC-devel"; \
+#    fi && \
+#    if [ -n "$PACKAGES" ]; then \
+#        dnf install -y --nogpgcheck --allowerasing --nobest $PACKAGES && \
+#        dnf clean all && rm -rf /var/cache/yum; \
+#    fi
+
 RUN --mount=type=cache,target=/var/cache/dnf \
     echo "Building for architecture: ${TARGETARCH}" && \
-    PACKAGES="mesa-libGL skopeo" && \
-    # Additional dev tools only for s390x
     if [ "$TARGETARCH" = "s390x" ]; then \
-        PACKAGES="$PACKAGES gcc gcc-c++ make openssl-devel autoconf automake libtool cmake python3-devel pybind11-devel openblas-devel unixODBC-devel"; \
+        PACKAGES="mesa-libGL skopeo gcc gcc-c++ make openssl-devel autoconf automake libtool cmake python3-devel pybind11-devel openblas-devel unixODBC-devel"; \
+    else \
+        PACKAGES="mesa-libGL skopeo"; \
     fi && \
-    if [ -n "$PACKAGES" ]; then \
-        dnf install -y --nogpgcheck --allowerasing --nobest $PACKAGES && \
-        dnf clean all && rm -rf /var/cache/yum; \
-    fi
+    echo "Installing: $PACKAGES" && \
+    dnf install -y --nogpgcheck --allowerasing --nobest $PACKAGES && \
+    dnf clean all && rm -rf /var/cache/yum
+
 
 # For s390x only, set ENV vars and install Rust
 RUN if [ "$TARGETARCH" = "s390x" ]; then \
