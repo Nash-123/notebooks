@@ -19,7 +19,7 @@ RUN --mount=type=cache,target=/var/cache/dnf \
         PACKAGES="mesa-libGL skopeo"; \
     fi && \
     echo "Installing: $PACKAGES" && \
-    dnf install -y --nogpgcheck --allowerasing --nobest $PACKAGES && \
+    dnf install -y --allowerasing --nobest $PACKAGES && \
     dnf clean all && rm -rf /var/cache/yum
 
 # Install Rust and set environment variables (s390x only)
@@ -27,6 +27,7 @@ RUN if [ "$TARGETARCH" = "s390x" ]; then \
     mkdir -p /opt/.cargo && \
     export HOME=/root && \
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o rustup-init.sh && \
+    echo "17247e4bcacf6027ec2e11c79a72c494c9af69ac8d1abcc1b271fa4375a106c2  rustup-init.sh" | sha256sum -c - && \
     chmod +x rustup-init.sh && \
     CARGO_HOME=/opt/.cargo ./rustup-init.sh -y --no-modify-path && \
     rm -f rustup-init.sh && \
@@ -70,7 +71,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     --mount=type=cache,target=/root/.cache/dnf \
     if [ "$TARGETARCH" = "s390x" ]; then \
         echo "Building pyarrow wheel for s390x..." && \
-        dnf install -y cmake make gcc-c++ pybind11-devel wget && \
+        dnf install -y cmake make gcc-c++ git pybind11-devel wget && \
         dnf clean all && \
         git clone --depth 1 https://github.com/apache/arrow.git && \
         cd arrow/cpp && \
@@ -79,8 +80,8 @@ RUN --mount=type=cache,target=/root/.cache/pip \
               -DCMAKE_INSTALL_PREFIX=/usr/local \
               -DARROW_PYTHON=ON \
               -DARROW_PARQUET=ON \
-              -DARROW_ORC=ON \
               -DARROW_FILESYSTEM=ON \
+              -DARROW_ORC=ON \
               -DARROW_JSON=ON \
               -DARROW_CSV=ON \
               -DARROW_DATASET=ON \
@@ -140,6 +141,9 @@ RUN if [ "$TARGETARCH" = "s390x" ]; then \
 else \
     echo "Skipping wheel install on non-s390x (${TARGETARCH})"; \
 fi
+
+# Drop privileges
+USER 1001
 
 # Install Python packages from Pipfile.lock
 COPY ${DATASCIENCE_SOURCE_CODE}/Pipfile.lock ./
