@@ -9,6 +9,7 @@ import requests
 
 from tests.containers import conftest, docker_utils
 from tests.containers.workbenches.workbench_image_test import WorkbenchContainer
+from tests.containers.architecture_utils import (is_feature_supported, get_architecture_limitation_reason)
 
 
 class TestJupyterLabImage:

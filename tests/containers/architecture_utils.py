@@ -3,6 +3,7 @@
 import pytest
 from tests.containers import docker_utils
 from tests.containers.workbenches.workbench_image_test import WorkbenchContainer
+from tests.containers.architecture_support import ARCHITECTURE_LIMITATIONS
 
 @pytest.fixture(scope="session")
 def container_architecture(jupyterlab_image):
@@ -19,10 +20,8 @@ def container_architecture(jupyterlab_image):
 
 def is_feature_supported(architecture: str, feature: str) -> bool:
     """Check if a feature is supported on the given architecture."""
-    from tests.containers.architecture_support import ARCHITECTURE_LIMITATIONS
     return ARCHITECTURE_LIMITATIONS.get(architecture, {}).get(feature, True)
 
 def get_architecture_limitation_reason(architecture: str, feature: str) -> str:
     """Get the reason why a feature is not supported on the given architecture."""
-    from tests.containers.architecture_support import ARCHITECTURE_LIMITATIONS
     return ARCHITECTURE_LIMITATIONS.get(architecture, {}).get(f"{feature}_reason", "Unknown limitation")
