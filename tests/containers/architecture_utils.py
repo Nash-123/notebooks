@@ -5,9 +5,9 @@ from tests.containers import docker_utils
 from tests.containers.workbenches.workbench_image_test import WorkbenchContainer
 from tests.containers.architecture_support import ARCHITECTURE_LIMITATIONS
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def container_architecture(jupyterlab_image):
-    """Cache architecture detection per test session."""
+    """Cache architecture detection per test function."""
     container = WorkbenchContainer(image=jupyterlab_image.name, user=4321, group_add=[0])
     container.start(wait_for_readiness=False)
     try:
