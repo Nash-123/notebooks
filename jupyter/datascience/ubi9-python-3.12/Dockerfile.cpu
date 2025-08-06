@@ -4,10 +4,22 @@
 FROM registry.access.redhat.com/ubi9/go-toolset:latest AS mongocli-builder
 
 ARG MONGOCLI_VERSION=2.0.3
-
+ARG TARGETARCH
 WORKDIR /tmp/
+
+RUN if [ "$TARGETARCH" = "s390x" ]; then \
+    echo "Building for ${TARGETARCH}"; \
+    curl -Lo mongodb-cli-mongocli-v${MONGOCLI_VERSION}.zip https://github.com/mongodb/mongodb-cli/archive/refs/tags/mongocli/v${MONGOCLI_VERSION}.zip && \
+    unzip mongodb-cli-mongocli-v${MONGOCLI_VERSION}.zip && \
+    cd mongodb-cli-mongocli-v${MONGOCLI_VERSION}/ && \
+    CGO_ENABLED=1 GOOS=linux GOARCH=${TARGETARCH} go build -a -tags strictfipsruntime -o /tmp/mongocli ./cmd/mongocli/; \
+else \
+   echo "Skipping mongocli build for $TARGETARCH"; \
+   mkdir -p /tmp && touch /tmp/mongocli && chmod +x /tmp/mongocli; \ 
+fi  
+
 RUN curl -Lo mongodb-cli-mongocli-v${MONGOCLI_VERSION}.zip https://github.com/mongodb/mongodb-cli/archive/refs/tags/mongocli/v${MONGOCLI_VERSION}.zip
-RUN unzip ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}.zip
+RUN unzip -o -q ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}.zip
 RUN cd ./mongodb-cli-mongocli-v${MONGOCLI_VERSION}/ && \
     CGO_ENABLED=1 GOOS=linux go build -a -tags strictfipsruntime -o /tmp/mongocli ./cmd/mongocli/
 
@@ -20,22 +32,113 @@ WORKDIR /opt/app-root/bin
 
 # OS Packages needs to be installed as root
 USER root
-
+ARG TARGETARCH
 # Install useful OS packages
-RUN dnf install -y mesa-libGL skopeo && dnf clean all && rm -rf /var/cache/yum
+#RUN dnf install -y mesa-libGL skopeo && dnf clean all && rm -rf /var/cache/yum
+
+RUN --mount=type=cache,target=/var/cache/dnf \
+    echo "Building for architecture: ${TARGETARCH}" && \
+    if [ "$TARGETARCH" = "s390x" ]; then \
+        PACKAGES="mesa-libGL skopeo gcc gcc-c++ make openssl-devel autoconf automake libtool cmake python3-devel pybind11-devel openblas-devel unixODBC-devel"; \
+    else \
+        PACKAGES="mesa-libGL skopeo"; \
+    fi && \
+    echo "Installing: $PACKAGES" && \
+    dnf install -y --nogpgcheck --allowerasing --nobest $PACKAGES && \
+    dnf clean all && rm -rf /var/cache/yum
+
+RUN if [ "$TARGETARCH" = "s390x" ]; then \
+    # Install Rust and set up environment
+    mkdir -p /opt/.cargo && \
+    export HOME=/root && \
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o rustup-init.sh && \
+    chmod +x rustup-init.sh && \
+    CARGO_HOME=/opt/.cargo HOME=/root ./rustup-init.sh -y --no-modify-path && \
+    rm -f rustup-init.sh && \
+    chown -R 1001:0 /opt/.cargo && \
+    # Set environment variables
+    echo 'export PATH=/opt/.cargo/bin:$PATH' >> /etc/profile.d/cargo.sh && \
+    echo 'export CARGO_HOME=/opt/.cargo' >> /etc/profile.d/cargo.sh && \
+    echo 'export GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1' >> /etc/profile.d/cargo.sh; \
+fi
+
+# Set python alternatives only for s390x (not needed for other arches)
+RUN if [ "$TARGETARCH" = "s390x" ]; then \
+    alternatives --install /usr/bin/python python /usr/bin/python3.12 1 && \
+    alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1 && \
+    python --version && python3 --version; \
+fi
 
 # Other apps and tools installed as default user
 USER 1001
 
 # Install micropipenv to deploy packages from Pipfile.lock
-RUN pip install --no-cache-dir -U "micropipenv[toml]"
+#RUN pip install --no-cache-dir -U "micropipenv[toml]"
 
-# Install the oc client begin
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --no-cache-dir -U "micropipenv[toml]"
+
+# Install the oc client
 RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-client-linux.tar.gz \
         -o /tmp/openshift-client-linux.tar.gz && \
     tar -xzvf /tmp/openshift-client-linux.tar.gz oc && \
     rm -f /tmp/openshift-client-linux.tar.gz
-# Install the oc client end
+
+##############################
+# wheel-builder stage        #
+##############################
+FROM base AS s390x-builder
+
+USER 0
+WORKDIR /tmp/build-wheels
+
+# Explicitly set TARGETARCH for this stage
+ARG TARGETARCH
+RUN echo "s390x-builder stage TARGETARCH: ${TARGETARCH}"
+
+# Build pyarrow optimized for s390x
+RUN --mount=type=cache,target=/root/.cache/pip \
+    --mount=type=cache,target=/root/.cache/dnf \
+    if [ "$(uname -m)" = "s390x" ] || [ "$TARGETARCH" = "s390x" ]; then \
+        echo "Starting s390x-specific build process..." && \
+        # Install build dependencies
+        dnf install -y cmake make gcc-c++ pybind11-devel wget && \
+        dnf clean all && \
+        # Build and collect pyarrow wheel
+        git clone --depth 1 https://github.com/apache/arrow.git && \
+        cd arrow/cpp && \
+        mkdir release && cd release && \
+        # Configure with s390x optimizations
+        cmake -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_INSTALL_PREFIX=/usr/local \
+              -DARROW_PYTHON=ON \
+              -DARROW_PARQUET=ON \
+              -DARROW_ORC=ON \
+              -DARROW_FILESYSTEM=ON \
+              -DARROW_JSON=ON \
+              -DARROW_CSV=ON \
+              -DARROW_DATASET=ON \
+              -DARROW_DEPENDENCY_SOURCE=BUNDLED \
+              -DCMAKE_CXX_FLAGS="-O3 -march=z14 -mtune=z14" \
+              -DCMAKE_C_FLAGS="-O3 -march=z14 -mtune=z14" \
+              .. && \
+        make -j$(nproc) && \
+        make install && \
+        cd ../../python && \
+        pip install --no-cache-dir -U pip wheel setuptools && \
+        pip install --no-cache-dir -r requirements-build.txt && \
+        export PYARROW_PARALLEL=$(nproc) && \
+        export ARROW_BUILD_TYPE=release && \
+        CFLAGS="-O3 -march=z14 -mtune=z14" \
+        CXXFLAGS="-O3 -march=z14 -mtune=z14" \
+        python setup.py build_ext --build-type=release --bundle-arrow-cpp bdist_wheel && \
+        mkdir -p /tmp/wheels && \
+        cp dist/pyarrow-*.whl /tmp/wheels/ && \
+        ls -la /tmp/wheels/; \
+    else \
+        echo "Not s390x architecture, creating empty wheels directory" && \
+        mkdir -p /tmp/wheels; \
+    fi
 
 ####################
 # jupyter-minimal #
@@ -50,11 +153,13 @@ WORKDIR /opt/app-root/bin
 COPY ${JUPYTER_REUSABLE_UTILS} utils/
 COPY ${MINIMAL_SOURCE_CODE}/start-notebook.sh ./
 
-USER 0
+#USER 0
 
 # Dependencies for PDF export
-RUN ./utils/install_pdf_deps.sh
-ENV PATH="/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
+#RUN ./utils/install_pdf_deps.sh
+#ENV PATH="/usr/local/texlive/bin/linux:/usr/local/pandoc/bin:$PATH"
+#
+
 
 USER 1001
 
@@ -75,10 +180,10 @@ LABEL name="odh-notebook-jupyter-datascience-ubi9-python-3.12" \
     description="Jupyter data science notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
     io.k8s.display-name="Jupyter data science notebook image for ODH notebooks" \
     io.k8s.description="Jupyter data science notebook image with base Python 3.12 builder image based on UBI9 for ODH notebooks" \
-    authoritative-source-url="https://github.com/opendatahub-io/notebooks" \
+    authoritative-source-url="https://github.com/Meghagaur/notebooks" \
     io.openshift.build.commit.ref="main" \
-    io.openshift.build.source-location="https://github.com/opendatahub-io/notebooks/tree/main/jupyter/datascience/ubi9-python-3.12" \
-    io.openshift.build.image="quay.io/opendatahub/workbench-images:jupyter-datascience-ubi9-python-3.12"
+    io.openshift.build.source-location="https://github.com/Meghagaur/notebooks/tree/main/jupyter/datascience/ubi9-python-3.12" \
+    io.openshift.build.image="quay.io/megha_gaur/workbench-images:jupyter-datascience-ubi9-python-3.12"
 
 WORKDIR /opt/app-root/bin
 
@@ -86,7 +191,16 @@ WORKDIR /opt/app-root/bin
 USER root
 
 # Install useful OS packages
-RUN dnf install -y jq unixODBC postgresql git-lfs libsndfile libxcrypt-compat && dnf clean all && rm -rf /var/cache/yum
+#RUN dnf install -y jq unixODBC postgresql git-lfs libsndfile libxcrypt-compat && dnf clean all && rm -rf /var/cache/yum
+
+ARG TARGETARCH
+# Install useful OS packages
+RUN --mount=type=cache,target=/root/.cache/dnf \
+    if [ "$TARGETARCH" = "s390x" ]; then \
+       dnf install -y jq unixODBC postgresql git-lfs libsndfile && \
+       dnf clean all && rm -rf /var/cache/yum; \
+    fi 
+
 
 # Copy dynamically-linked mongocli built in earlier build stage
 COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/
@@ -94,22 +208,59 @@ COPY --from=mongocli-builder /tmp/mongocli /opt/app-root/bin/
 # Install MSSQL Client, We need a special repo for MSSQL as they do their own distribution
 COPY ${DATASCIENCE_SOURCE_CODE}/mssql-2022.repo /etc/yum.repos.d/mssql-2022.repo
 
-RUN ACCEPT_EULA=Y dnf install -y mssql-tools18 unixODBC-devel && dnf clean all && rm -rf /var/cache/yum
+#RUN ACCEPT_EULA=Y dnf install -y mssql-tools18 unixODBC-devel && dnf clean all && rm -rf /var/cache/yum
+
+RUN --mount=type=cache,target=/root/.cache/dnf \
+    echo "Installing MSSQL tools for $TARGETARCH" && \
+    if [ "$TARGETARCH" = "amd64" ]; then \
+        ACCEPT_EULA=Y dnf install -y \
+        mssql-tools18 \
+        msodbcsql18 \
+        unixODBC-devel && \
+        dnf clean all && rm -rf /var/cache/yum; \
+    else \
+        echo "Skipping MSSQL tools for $TARGETARCH"; \
+    fi
 
 ENV PATH="$PATH:/opt/mssql-tools18/bin"
 
-# Other apps and tools installed as default user
-USER 1001
+USER 0
+
+COPY --from=s390x-builder /tmp/wheels /tmp/wheels
+RUN if [ "$(uname -m)" = "s390x" ] || [ "$TARGETARCH" = "s390x" ]; then \
+    echo "Checking /tmp/wheels contents:" && \
+    ls -la /tmp/wheels/ && \
+    WHEEL_FILES=$(find /tmp/wheels/ -name "pyarrow-*.whl" -type f) && \
+    if [ -n "$WHEEL_FILES" ]; then \
+        echo "Found wheel files: $WHEEL_FILES" && \
+        pip install --no-cache-dir $WHEEL_FILES && \
+        echo "Successfully installed wheels" && \
+        rm -rf /tmp/wheels; \
+    else \
+        echo "ERROR: No wheel files found in /tmp/wheels" && \
+        echo "/tmp/wheels contents:" && \
+        ls -la /tmp/wheels/ && \
+        exit 1; \
+    fi \
+else \
+    echo "Not s390x architecture (TARGETARCH=${TARGETARCH}, uname -m=$(uname -m)), skipping wheel install"; \
+fi
+
 
 # Install Python packages and Jupyterlab extensions from Pipfile.lock
 COPY ${DATASCIENCE_SOURCE_CODE}/Pipfile.lock ./
 # Copy Elyra setup to utils so that it's sourced at startup
 COPY ${DATASCIENCE_SOURCE_CODE}/setup-elyra.sh ${DATASCIENCE_SOURCE_CODE}/utils ./utils/
 
-RUN echo "Installing softwares and packages" && \
-    micropipenv install && \
+RUN --mount=type=cache,target=/root/.cache/pip \
+    echo "Installing softwares and packages" && \
+    if [ "$TARGETARCH" = "s390x" ]; then \
+        GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=1 CFLAGS="-O3" CXXFLAGS="-O3" micropipenv install; \
+    else \
+        micropipenv install; \
+    fi && \
     rm -f ./Pipfile.lock && \
-    # setup path for runtime configuration
+    # setup path for runtime configuration \
     mkdir /opt/app-root/runtimes && \
     mkdir /opt/app-root/pipeline-runtimes && \
     # Remove default Elyra runtime-images \
