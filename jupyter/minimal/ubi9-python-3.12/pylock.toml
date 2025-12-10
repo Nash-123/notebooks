@@ -702,9 +702,9 @@ wheels = [{ url = "https://files.pythonhosted.org/packages/a3/17/20c2552266728ce
 
 [[packages]]
 name = "ipython"
-version = "9.7.0"
-sdist = { url = "https://files.pythonhosted.org/packages/29/e6/48c74d54039241a456add616464ea28c6ebf782e4110d419411b83dae06f/ipython-9.7.0.tar.gz", upload-time = 2025-11-05T12:18:54Z, size = 4422115, hashes = { sha256 = "5f6de88c905a566c6a9d6c400a8fed54a638e1f7543d17aae2551133216b1e4e" } }
-wheels = [{ url = "https://files.pythonhosted.org/packages/05/aa/62893d6a591d337aa59dcc4c6f6c842f1fe20cd72c8c5c1f980255243252/ipython-9.7.0-py3-none-any.whl", upload-time = 2025-11-05T12:18:52Z, size = 618911, hashes = { sha256 = "bce8ac85eb9521adc94e1845b4c03d88365fd6ac2f4908ec4ed1eb1b0a065f9f" } }]
+version = "9.8.0"
+sdist = { url = "https://files.pythonhosted.org/packages/12/51/a703c030f4928646d390b4971af4938a1b10c9dfce694f0d99a0bb073cb2/ipython-9.8.0.tar.gz", upload-time = 2025-12-03T10:18:24Z, size = 4424940, hashes = { sha256 = "8e4ce129a627eb9dd221c41b1d2cdaed4ef7c9da8c17c63f6f578fe231141f83" } }
+wheels = [{ url = "https://files.pythonhosted.org/packages/f1/df/8ee1c5dd1e3308b5d5b2f2dfea323bb2f3827da8d654abb6642051199049/ipython-9.8.0-py3-none-any.whl", upload-time = 2025-12-03T10:18:22Z, size = 621374, hashes = { sha256 = "ebe6d1d58d7d988fbf23ff8ff6d8e1622cfdb194daf4b7b73b792c4ec3b85385" } }]
 
 [[packages]]
 name = "ipython-pygments-lexers"
@@ -756,9 +756,9 @@ wheels = [{ url = "https://files.pythonhosted.org/packages/41/45/1a4ed80516f0215
 
 [[packages]]
 name = "jupyter-client"
-version = "8.6.3"
-sdist = { url = "https://files.pythonhosted.org/packages/71/22/bf9f12fdaeae18019a468b68952a60fe6dbab5d67cd2a103cac7659b41ca/jupyter_client-8.6.3.tar.gz", upload-time = 2024-09-17T10:44:17Z, size = 342019, hashes = { sha256 = "35b3a0947c4a6e9d589eb97d7d4cd5e90f910ee73101611f01283732bd6d9419" } }
-wheels = [{ url = "https://files.pythonhosted.org/packages/11/85/b0394e0b6fcccd2c1eeefc230978a6f8cb0c5df1e4cd3e7625735a0d7d1e/jupyter_client-8.6.3-py3-none-any.whl", upload-time = 2024-09-17T10:44:15Z, size = 106105, hashes = { sha256 = "e8a19cc986cc45905ac3362915f410f3af85424b4c0905e94fa5f2cb08e8f23f" } }]
+version = "8.7.0"
+sdist = { url = "https://files.pythonhosted.org/packages/a6/27/d10de45e8ad4ce872372c4a3a37b7b35b6b064f6f023a5c14ffcced4d59d/jupyter_client-8.7.0.tar.gz", upload-time = 2025-12-09T18:37:01Z, size = 344691, hashes = { sha256 = "3357212d9cbe01209e59190f67a3a7e1f387a4f4e88d1e0433ad84d7b262531d" } }
+wheels = [{ url = "https://files.pythonhosted.org/packages/bb/f5/fddaec430367be9d62a7ed125530e133bfd4a1c0350fe221149ee0f2b526/jupyter_client-8.7.0-py3-none-any.whl", upload-time = 2025-12-09T18:37:00Z, size = 106215, hashes = { sha256 = "3671a94fd25e62f5f2f554f5e95389c2294d89822378a5f2dd24353e1494a9e0" } }]
 
 [[packages]]
 name = "jupyter-core"
@@ -1165,9 +1165,9 @@ wheels = [{ url = "https://files.pythonhosted.org/packages/9e/c3/059298687310d52
 
 [[packages]]
 name = "platformdirs"
-version = "4.5.0"
-sdist = { url = "https://files.pythonhosted.org/packages/61/33/9611380c2bdb1225fdef633e2a9610622310fed35ab11dac9620972ee088/platformdirs-4.5.0.tar.gz", upload-time = 2025-10-08T17:44:48Z, size = 21632, hashes = { sha256 = "70ddccdd7c99fc5942e9fc25636a8b34d04c24b335100223152c2803e4063312" } }
-wheels = [{ url = "https://files.pythonhosted.org/packages/73/cb/ac7874b3e5d58441674fb70742e6c374b28b0c7cb988d37d991cde47166c/platformdirs-4.5.0-py3-none-any.whl", upload-time = 2025-10-08T17:44:47Z, size = 18651, hashes = { sha256 = "e578a81bb873cbb89a41fcc904c7ef523cc18284b7e3b3ccf06aca1403b7ebd3" } }]
+version = "4.5.1"
+sdist = { url = "https://files.pythonhosted.org/packages/cf/86/0248f086a84f01b37aaec0fa567b397df1a119f73c16f6c7a9aac73ea309/platformdirs-4.5.1.tar.gz", upload-time = 2025-12-05T13:52:58Z, size = 21715, hashes = { sha256 = "61d5cdcc6065745cdd94f0f878977f8de9437be93de97c1c12f853c9c0cdcbda" } }
+wheels = [{ url = "https://files.pythonhosted.org/packages/cb/28/3bfe2fa5a7b9c46fe7e13c97bda14c895fb10fa2ebf1d0abb90e0cea7ee1/platformdirs-4.5.1-py3-none-any.whl", upload-time = 2025-12-05T13:52:56Z, size = 18731, hashes = { sha256 = "d03afa3963c806a9bed9d5125c8f4cb2fdaf74a55ab60e5d59b3fde758104d31" } }]
 
 [[packages]]
 name = "prometheus-client"
@@ -1798,9 +1798,9 @@ wheels = [{ url = "https://files.pythonhosted.org/packages/e7/00/3fca040d7cf8a32
 
 [[packages]]
 name = "urllib3"
-version = "2.5.0"
-sdist = { url = "https://files.pythonhosted.org/packages/15/22/9ee70a2574a4f4599c47dd506532914ce044817c7752a79b6a51286319bc/urllib3-2.5.0.tar.gz", upload-time = 2025-06-18T14:07:41Z, size = 393185, hashes = { sha256 = "3fc47733c7e419d4bc3f6b3dc2b4f890bb743906a30d56ba4a5bfa4bbff92760" } }
-wheels = [{ url = "https://files.pythonhosted.org/packages/a7/c2/fe1e52489ae3122415c51f387e221dd0773709bad6c6cdaa599e8a2c5185/urllib3-2.5.0-py3-none-any.whl", upload-time = 2025-06-18T14:07:40Z, size = 129795, hashes = { sha256 = "e6b01673c0fa6a13e374b50871808eb3bf7046c4b125b216f6bf1cc604cff0dc" } }]
+version = "2.6.1"
+sdist = { url = "https://files.pythonhosted.org/packages/5e/1d/0f3a93cca1ac5e8287842ed4eebbd0f7a991315089b1a0b01c7788aa7b63/urllib3-2.6.1.tar.gz", upload-time = 2025-12-08T15:25:26Z, size = 432678, hashes = { sha256 = "5379eb6e1aba4088bae84f8242960017ec8d8e3decf30480b3a1abdaa9671a3f" } }
+wheels = [{ url = "https://files.pythonhosted.org/packages/bc/56/190ceb8cb10511b730b564fb1e0293fa468363dbad26145c34928a60cb0c/urllib3-2.6.1-py3-none-any.whl", upload-time = 2025-12-08T15:25:25Z, size = 131138, hashes = { sha256 = "e67d06fe947c36a7ca39f4994b08d73922d40e6cca949907be05efa6fd75110b" } }]
 
 [[packages]]
 name = "wcwidth"
